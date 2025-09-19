@@ -9,4 +9,5 @@ export default interface NestedFormModalProps {
   dataSource: ObjectDataSource;
   onUpdateDataSource: (newDataSource: ObjectDataSource) => void;
   depth?: number;
+  maxDepth: number;
 }

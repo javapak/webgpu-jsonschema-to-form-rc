@@ -8,7 +8,7 @@ function App() {
 
   return (
     <div style={{width: '80vw'}}>
-    <WebGPUSchemaFormGenerator />
+    <WebGPUSchemaFormGenerator maxDepth={10} />
     </div>
     
   )

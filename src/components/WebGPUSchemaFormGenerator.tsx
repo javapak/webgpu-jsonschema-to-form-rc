@@ -13,7 +13,7 @@ import { Button, Stack, Textarea} from "@mantine/core";
 
 
 
-const WebGPUSchemaFormGenerator: React.FC = () => {
+const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {maxDepth: number}) => {
   const [processor] = useState<WebGPUSchemaProcessor>(() => new WebGPUSchemaProcessor());
   const [schema, setSchema] = useState<string>('');
   const [formFields, setFormFields] = useState<ProcessedField[]>([]);
@@ -152,7 +152,8 @@ const WebGPUSchemaFormGenerator: React.FC = () => {
                   onClose={() => setNestedForm(null)}
                   onSave={handleNestedFormSave}
                   dataSource={dataSource}
-                  onUpdateDataSource={handleUpdateDataSource}        />
+                  onUpdateDataSource={handleUpdateDataSource}
+                  maxDepth={maxDepth}        />
               )}
       <h1 className="text-3xl font-bold mb-6 text-gray-800">
         WebGPU JSON Schema Form Generator

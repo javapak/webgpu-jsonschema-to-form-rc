@@ -21,6 +21,7 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
   onSave,
   dataSource,
   onUpdateDataSource,
+  maxDepth,
   depth = 0
 }) => {
   const [processor] = useState(() => new WebGPUSchemaProcessor());
@@ -47,7 +48,7 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
   };
 
   const handleCreateNestedObject = (field: ProcessedField): void => {
-    if (field.schema && depth < 5) { // Prevent infinite nesting (max 5 levels)
+    if (field.schema && depth < maxDepth) { // Prevent infinite nesting (max 5 levels)
       setChildNestedForm({
         isOpen: true,
         parentPath: field.name,
@@ -55,8 +56,8 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
         values: {},
         title: field.schema.title || field.name.split('.').pop() || 'Object'
       });
-    } else if (depth >= 5) {
-      alert('Maximum nesting depth reached (5 levels). Please create this object separately.');
+    } else if (depth >= maxDepth) {
+      alert(`Maximum nesting depth reached (${maxDepth} levels). Please create this object separately.`);
     }
   };
 
@@ -200,6 +201,7 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
           onSave={handleChildNestedFormSave}
           dataSource={dataSource}
           onUpdateDataSource={onUpdateDataSource}
+          maxDepth={maxDepth}
           depth={depth + 1}
         />
       )}
