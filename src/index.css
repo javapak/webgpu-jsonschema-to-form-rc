@@ -1,0 +1,20 @@
+
+.ButtonGroup {
+  padding: 10px;
+}
+
+.ButtonGroup > * {
+  margin: 10px;
+}
+
+.FormField {
+  width: 40vw
+}
+
+p.Error {
+  color: red;
+}
+
+p.Warning {
+  color: yellow
+}
