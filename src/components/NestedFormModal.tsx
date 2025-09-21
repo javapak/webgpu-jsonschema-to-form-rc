@@ -107,8 +107,9 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
   const modalZIndex = 50 + depth * 10; // Ensure proper stacking of nested modals
 
   return (
-    <Container>
+    <Container w="60%">
       <Modal
+        title={`Create new ${nestedForm.title}`}
         opened={opened}
         onClose={close}
         centered
@@ -125,31 +126,30 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
           <div>
             <div>
               <div>
-                <h2>
-                  Create New {nestedForm.title}
-                </h2>
                 <div className="ButtonGroup">
-                              <ActionIcon
-                variant="subtle"
-                onClick={onClose}
-                title="Close and return to parent"
-                
-                
-              >
-                <ArrowLeft width={'70%'}/> 
-              </ActionIcon>
+
               </div>
                 {depth > 0 && (
-                  <p >
+                <>
+                <ActionIcon
+                  variant="subtle"
+                  onClick={onClose}
+                  title="Close and return to parent"
+                  
+                >
+                  <ArrowLeft width={'70%'}/> 
+                </ActionIcon>
+                  <p>
                     Nesting Level: {depth + 1} | Parent Path: {nestedForm.parentPath}
                   </p>
+                  </>
                 )}
               </div>
 
             </div>
           </div>
 
-          <div>
+          <div className="FormField">
             {formFields.length === 0 ? (
               <div>
                 <p>Loading form fields...</p>
@@ -172,10 +172,11 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
           </div>
 
           <div>
+            <div className="ButtonGroup">
+
             <div>
               {depth > 0 ? `Level ${depth + 1} of nested forms` : 'Root level form'}
             </div>
-            <div className="ButtonGroup">
               <Button
                 onClick={onClose}
               >

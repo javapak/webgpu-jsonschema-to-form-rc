@@ -8,7 +8,8 @@
 }
 
 .FormField {
-  width: 40vw
+  width: 75%;
+  padding: 20px;
 }
 
 p.Error {

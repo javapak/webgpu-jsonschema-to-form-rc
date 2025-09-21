@@ -24,9 +24,8 @@ const FormField: React.FC<FormFieldProps> = ({
         {field.type === 'circular_reference' && (
           <span >circular ref</span>
         )}
-         {field.name.split('.').pop()}
       </label>
-      <div title={`${field.schema?.description}`}>
+      <div title={`${field.schema?.description}`} className="FormInput">
       <FormInput 
         field={field} 
         value={value} 

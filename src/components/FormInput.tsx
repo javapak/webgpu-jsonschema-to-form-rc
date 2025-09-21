@@ -22,6 +22,8 @@ const FormInput: React.FC<FormInputProps> = ({
     case 'integer':
       return (
         <TextInput
+          pb={20}
+          label={field.name}
           type="number" 
           {...baseInputProps}
           value={typeof value === 'number' ? value : ''}
@@ -33,7 +35,10 @@ const FormInput: React.FC<FormInputProps> = ({
       );
     case 'boolean':
       return (
+
         <Checkbox
+          pb={20}
+          label={field.name}
           type="checkbox"
           checked={typeof value === 'boolean' ? value : false}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(field.name, e.target.checked)}
@@ -79,6 +84,8 @@ const FormInput: React.FC<FormInputProps> = ({
       }
       return (
         <TextInput
+          pb={20}
+          label={field.name}
           type="text" 
           {...baseInputProps}
           value={typeof value === 'string' ? value : ''}
