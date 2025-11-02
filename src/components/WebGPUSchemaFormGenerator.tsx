@@ -8,8 +8,8 @@ import type FormValues from "../types/FormValues";
 import WebGPUSchemaProcessor from "../webgpu/WebGPUSchemaProcessor";
 import FormField from "./FormField";
 import NestedFormModal from "./NestedFormModal";
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Button, Stack, Textarea} from "@mantine/core";
+import { useState, useEffect, useCallback } from "react";
+import { Button, Textarea} from "@mantine/core";
 
 
 
@@ -21,12 +21,10 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [webGPUSupported, setWebGPUSupported] = useState<boolean>(false);
-  const root = useRef(<Stack align="center"/>)
+  const [currentPath, setCurrentPath] = useState<string>('root');
   
   // Object data source for dropdowns
-  const [dataSource, setDataSource] = useState<ObjectDataSource>({
-
-  });
+  const [dataSource, setDataSource] = useState<ObjectDataSource>({});
 
   const [nestedForm, setNestedForm] = useState<NestedFormState | null>(null);
   const [availableRefs, setAvailableRefs] = useState<string[]>(['root', 'parent', 'self']);
@@ -80,7 +78,7 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
     if (field.schema) {
       setNestedForm({
         isOpen: true,
-        parentPath: field.name,
+        parentPath: `${currentPath} → ${field.name}`,
         schema: field.schema,
         values: {},
         title: field.schema.title || field.name.split('.').pop() || 'Object'
@@ -150,6 +148,7 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
                 <NestedFormModal
                   nestedForm={nestedForm}
                   onClose={() => setNestedForm(null)}
+                  closeAll={() => setNestedForm(null)}
                   onSave={handleNestedFormSave}
                   dataSource={dataSource}
                   onUpdateDataSource={handleUpdateDataSource}
@@ -196,6 +195,7 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
           <Textarea
             value={schema}
             w={'50%'}
+            pl={'20px'}
             pb={'20px'}
             resize="vertical"
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setSchema(e.target.value)}
@@ -204,22 +204,25 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
           {errors.schema && (
             <p>{errors.schema}</p>
           )}
-          
-          <Button
-            onClick={generateForm}
-            disabled={loading}
-          >
-            {loading ? 'Processing...' : 'Generate Form'}
-          </Button>
+          <div style={{paddingLeft: '20px'}}>
+            <Button
+              onClick={generateForm}
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : 'Generate Form'}
+            </Button>
+          </div>
         </div>
 
         {/* Generated Form */}
         <div>
-          <h2>Generated Form</h2>
+          
           
           {formFields.length > 0 ? (
             <>
-              <div className='FormField'>
+              <div className='FormField' style={{maxWidth: '40%'}}>
+                <h3>{JSON.parse(schema).name} properties:</h3>
+
                 {formFields.map((field: ProcessedField, index: number) => (
                   <FormField
                     key={`${field.name}-${index}`}
@@ -234,12 +237,13 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
                   />
                 ))}
               </div>
-              
+              <div style={{paddingLeft: '20px'}}>
               <Button
                 onClick={handleSubmit}
               >
                 Submit
               </Button>
+              </div>
 
 
             </>
@@ -271,26 +275,6 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
         </div>
       )}
 
-      {/* Processing Info */}
-      {webGPUSupported && formFields.length > 0 && (
-        <div>
-          <h3>WebGPU Processing Results</h3>
-          <p>
-            Processed {formFields.length} fields using GPU compute shaders for optimized rendering order.
-          </p>
-          <ul>
-            <li><strong>Parallel Field Analysis</strong> - All fields processed simultaneously across GPU cores</li>
-            <li><strong>Priority Optimization</strong> - GPU-computed priorities based on depth and requirements</li>
-            <li><strong>Circular Reference Detection</strong> - Advanced schema analysis for self-referential structures</li>
-            <li><strong>Object Hierarchy Mapping</strong> - Nested structure analysis for complex relationships</li>
-          </ul>
-          <div>
-            ⚡ GPU compute shader executed with {Math.ceil(formFields.length / 64)} workgroups at 64 threads each
-          </div>
-        </div>
-      )}
-
-
     </div>
     
   );
@@ -303,7 +287,9 @@ const sampleSchemas: Record<string, JsonSchema> = {
       name: { type: 'string', description: 'Full name' },
       age: { type: 'integer', description: 'Age in years' },
       email: { type: 'string', description: 'Email address' },
-      active: { type: 'boolean', description: 'Account active status' }
+      active: { type: 'boolean', description: 'Account active status' },
+      membership: {type: 'string', enum: ['Basic', 'Plus', 'Ultimate']}
+
     },
     required: ['name', 'email']
   },

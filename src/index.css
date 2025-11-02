@@ -8,8 +8,15 @@
 }
 
 .FormField {
-  width: 75%;
   padding: 20px;
+}
+
+.SelectWrapper {
+  padding-bottom: 25px !important;
+}
+
+.SelectWrapper > div {
+  padding-bottom: 25px !important;
 }
 
 p.Error {

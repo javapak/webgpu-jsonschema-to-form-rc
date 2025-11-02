@@ -13,19 +13,10 @@ const FormField: React.FC<FormFieldProps> = ({
   availableRefs 
 }) => {
   const error: string | null = errors[field.name] || null;
-  const indentClass: string = depth > 0 ? `ml-${Math.min(depth * 4, 16)}` : '';
+  console.log(depth);
 
   return (
-    <div className={`mb-4 ${indentClass}`}>
-      <label>
-        
-        {field.required && <span>*</span>}
-        {field.type === 'object' && <span></span>}
-        {field.type === 'circular_reference' && (
-          <span >circular ref</span>
-        )}
-      </label>
-      <div title={`${field.schema?.description}`} className="FormInput">
+    <>
       <FormInput 
         field={field} 
         value={value} 
@@ -35,10 +26,10 @@ const FormField: React.FC<FormFieldProps> = ({
         onCreateNew={onCreateNew}
         availableRefs={availableRefs}
       />
-      </div>
+
 
       {error && <p className="Error">{error}.</p>}
-    </div>
+    </>
   );
 };
 

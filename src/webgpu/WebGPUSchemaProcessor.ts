@@ -9,15 +9,6 @@ export default class WebGPUSchemaProcessor {
   private adapter: GPUAdapter | null = null;
   private initialized: boolean = false;
 
-  private readonly fieldTypeMap: Record<string, number> = {
-    'string': 1,
-    'number': 2,
-    'integer': 3,
-    'boolean': 4,
-    'array': 5,
-    'object': 6,
-    'circular_reference': 99
-  };
 
   async initialize(): Promise<void> {
     if (!navigator.gpu) {

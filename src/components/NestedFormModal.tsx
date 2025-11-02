@@ -6,7 +6,7 @@ import type ProcessedField from "../types/ProcessedField";
 import WebGPUSchemaProcessor from "../webgpu/WebGPUSchemaProcessor";
 import FormField from "./FormField";
 import type NestedFormState from "../types/NestedFormState";
-import { Box, Button, ActionIcon, Center, Container, Modal } from "@mantine/core";
+import { Button, ActionIcon, Center, Container, Modal } from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
 import {ArrowLeft} from '@ricons/tabler';
 import '@mantine/core/styles/ModalBase.css';
@@ -22,14 +22,16 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
   dataSource,
   onUpdateDataSource,
   maxDepth,
-  depth = 0
+  depth = 0,
+  closeAll
 }) => {
   const [processor] = useState(() => new WebGPUSchemaProcessor());
   const [formFields, setFormFields] = useState<ProcessedField[]>([]);
   const [formValues, setFormValues] = useState<FormValues>(nestedForm.values);
   const [errors, setErrors] = useState<FormErrors>({});
   const [childNestedForm, setChildNestedForm] = useState<NestedFormState | null>(null);
-  const [opened, {open, close}] = useDisclosure(true);
+  const [opened, { close }] = useDisclosure(true);
+
 
 
   useEffect(() => {
@@ -48,10 +50,10 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
   };
 
   const handleCreateNestedObject = (field: ProcessedField): void => {
-    if (field.schema && depth < maxDepth) { // Prevent infinite nesting (max 5 levels)
+    if (field.schema && depth < maxDepth) { // Prevent infinite nesting 
       setChildNestedForm({
         isOpen: true,
-        parentPath: field.name,
+        parentPath: nestedForm.parentPath ? `${nestedForm.parentPath} → ${field.name}`: field.name,
         schema: field.schema,
         values: {},
         title: field.schema.title || field.name.split('.').pop() || 'Object'
@@ -61,6 +63,18 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
     }
   };
 
+  const callOnClose = () => {
+    // If a top-level closeAll handler was provided, use it to close the entire stack.
+    if (closeAll) {
+      closeAll();
+      return;
+    }
+
+    // Fallback: close only this modal and call the provided onClose to let the parent handle its state.
+    close();
+    onClose();
+  }
+
   const handleChildNestedFormSave = (data: object): void => {
     if (!childNestedForm) return;
 
@@ -69,13 +83,14 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
     const id = `nested_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const label = `${Object.values(data)[0]} (Nested L${depth + 1})` || `Nested ${objectType} L${depth + 1}`;
 
-    const newDataSource = {
+    let newDataSource = {
       ...dataSource,
       [objectType]: [
         ...(dataSource[objectType] || []),
         { id, label, data }
-      ]
+      ],
     };
+
 
     // Update the parent's data source
     onUpdateDataSource(newDataSource);
@@ -107,18 +122,16 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
   const modalZIndex = 50 + depth * 10; // Ensure proper stacking of nested modals
 
   return (
-    <Container w="60%">
+    <Container>
       <Modal
         title={`Create new ${nestedForm.title}`}
         opened={opened}
-        onClose={close}
+        onClose={callOnClose}
         centered
         zIndex={modalZIndex}
       >
         <div 
           style={{ 
-            transform: `scale(${1 - depth * 0.05})`,
-            maxWidth: `${100 - depth * 5}%`,
             justifyContent: 'center'
           }}
         >
@@ -133,15 +146,14 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
                 <>
                 <ActionIcon
                   variant="subtle"
-                  onClick={onClose}
+                  onClick={() => onClose()}
+                
                   title="Close and return to parent"
                   
                 >
                   <ArrowLeft width={'70%'}/> 
                 </ActionIcon>
-                  <p>
-                    Nesting Level: {depth + 1} | Parent Path: {nestedForm.parentPath}
-                  </p>
+
                   </>
                 )}
               </div>
@@ -156,6 +168,7 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
               </div>
             ) : (
               formFields.map((field, index) => (
+                <div>
                 <FormField
                   key={`${field.name}-${index}-depth-${depth}`}
                   field={field}
@@ -167,6 +180,7 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
                   onCreateNew={handleCreateNestedObject}
                   availableRefs={[]}
                 />
+                </div>
               ))
             )}
           </div>
@@ -174,9 +188,7 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
           <div>
             <div className="ButtonGroup">
 
-            <div>
-              {depth > 0 ? `Level ${depth + 1} of nested forms` : 'Root level form'}
-            </div>
+
               <Button
                 onClick={onClose}
               >
@@ -191,6 +203,9 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
             </div>
           </div>
         </div>
+        <p>
+         {nestedForm.parentPath} | {depth + 1}
+        </p>
       </Modal>
 
       {/* Recursive Child Nested Form */}
@@ -204,8 +219,10 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
           onUpdateDataSource={onUpdateDataSource}
           maxDepth={maxDepth}
           depth={depth + 1}
+          closeAll={closeAll}
         />
       )}
+
       </Center>
     </ Container>
   );

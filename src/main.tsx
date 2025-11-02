@@ -4,8 +4,8 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import { Box, Card, Center, Container, createTheme, MantineProvider, Paper, rem, Select } from '@mantine/core'
 import type { MantineThemeOverride } from "@mantine/core";
-import '@mantine/core/styles.css';
 import './index.css'
+import '@mantine/core/styles.css';
 
 
 const CONTAINER_SIZES: Record<string, string> = {

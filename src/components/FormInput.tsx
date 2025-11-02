@@ -1,6 +1,6 @@
 import type FormInputProps from "../types/FormInputProps";
 import React from 'react';
-import {Checkbox, TextInput, Select, Input} from '@mantine/core'
+import {Checkbox, TextInput, NativeSelect} from '@mantine/core'
 import ObjectSelector from "./ObjectSelector";
 import CircularRefSelector from "./CircularRefSelector";
 
@@ -14,7 +14,7 @@ const FormInput: React.FC<FormInputProps> = ({
   availableRefs 
 }) => {
   const baseInputProps = {
-    placeholder: field.schema?.description || `Enter ${field.name}`,
+    placeholder: `Enter ${field.name}`,
   };
 
   switch (field.type) {
@@ -22,8 +22,12 @@ const FormInput: React.FC<FormInputProps> = ({
     case 'integer':
       return (
         <TextInput
-          pb={20}
+          maw='250px'
+          title={field.schema?.title}
+          description={field.schema?.description}
           label={field.name}
+          withAsterisk={field.required}
+          pb={20}
           type="number" 
           {...baseInputProps}
           value={typeof value === 'number' ? value : ''}
@@ -38,7 +42,8 @@ const FormInput: React.FC<FormInputProps> = ({
 
         <Checkbox
           pb={20}
-          label={field.name}
+          title={field.schema?.title}
+          label={field.required ? `${field.name} *` : field.name}
           type="checkbox"
           checked={typeof value === 'boolean' ? value : false}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(field.name, e.target.checked)}
@@ -68,24 +73,27 @@ const FormInput: React.FC<FormInputProps> = ({
     default:
       if (field.schema?.enum) {
         return (
-          <Select
+          <NativeSelect
+            maw='250px'
+            title={field.schema.title}
+            description={field.schema?.description}
+            label={field.name}
+            withAsterisk={field.required}
             {...baseInputProps}
             value={typeof value === 'string' ? value : ''}
-            onChange={(e) => onChange(field.name, !e)}
-          >
-            <option value="">Select an option...</option>
-            {field.schema.enum.map((option) => (
-              <option key={String(option)} value={String(option)}>
-                {String(option)}
-              </option>
-            ))}
-          </Select>
+            onChange={(e) => onChange(field.name, e.currentTarget.value)}
+            data={field.schema.enum.map(String)}
+          />
         );
       }
       return (
         <TextInput
-          pb={20}
+          maw='250px'
+          title={field.schema?.title}
+          description={field.schema?.description}
+          withAsterisk={field.required}
           label={field.name}
+          pb={20}
           type="text" 
           {...baseInputProps}
           value={typeof value === 'string' ? value : ''}

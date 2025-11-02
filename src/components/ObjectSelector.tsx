@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type ObjectSelectorProps from "../types/ObjectSelectorProps";
-import type ProcessedField from "../types/ProcessedField";
-import { Accordion, AccordionControl, AccordionItem, ActionIcon, Button } from "@mantine/core";
-import { ChevronDown, Plus } from "@ricons/tabler";
+import { Divider, ActionIcon, Button, Code, NativeSelect, Group, TextInput } from "@mantine/core";
+import { Plus } from "@ricons/tabler";
 
 const ObjectSelector: React.FC<ObjectSelectorProps> = ({ 
   field, 
@@ -14,79 +13,73 @@ const ObjectSelector: React.FC<ObjectSelectorProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const objectType = field.schema?.title || field.name.split('.').pop() || 'object';
-  const availableItems = dataSource[objectType] || [];
+  const [availableItems, setAvailableItems] = useState<Array<{
+    id: string;
+    label: string;
+    data: object;
+  }>>();
+  const [selectedItem, setSelectedItem] = useState<Record<string, {}> | undefined>();
 
-  const selectedItem = availableItems.find(item => 
-    value && typeof value === 'object' && 
-    JSON.stringify(item.data) === JSON.stringify(value)
-  );
+
+  useEffect(() => {
+    setSelectedItem(availableItems?.find(item => 
+      value && typeof value === 'object' && 
+      JSON.stringify(item.data) === JSON.stringify(value)
+    ))
+  }, [onChange, setSelectedItem]);
+
+
+  useEffect(() => {
+    if (dataSource && dataSource[objectType]) {
+      setAvailableItems(dataSource[objectType]);
+    }
+
+  }, [dataSource, setAvailableItems]);
 
   return (
     <div>
-      <div>
-        <div>
+      <Group>
+        
+        {availableItems?.length && availableItems.length > 0 ? (
 
-          <Accordion>
-          <Accordion.Item value='single-item'>
+        <>
+        <NativeSelect 
+          title={`Use existing ${objectType} reference`}
+          classNames={{root: 'SelectRoot', wrapper: 'SelectWrapper' }}
+          content=""
+          label={field.name}
+          data={availableItems?.map((item) => ` ${field.name} - ${item.id}`)}
+          w='250px'
+          onChange={(e) => onChange(field.name, e.currentTarget.value)}
+        />
+        <Divider size="xs" orientation="vertical"/>
+        </>
+        
+        ): <>
+        <TextInput w='250px' error disabled placeholder={`No ${objectType} instances to reference. `}/>
+          <Divider size="xs" orientation="vertical" />
+        </>
+        }
+          
+            <ActionIcon
+              variant="subtle"
+              type="button"
+              onClick={() => onCreateNew(field)}
+              title={`Create new ${objectType}`}
+            >
 
-            <AccordionControl>
-            <span>
-              {selectedItem ? selectedItem.label : `Select ${objectType}...`}
-            </span>
-            </AccordionControl>
-            
-            
-            <Accordion.Panel>
-              <div>
-                {availableItems.length === 0 ? (
-                  <div>
-                    No {objectType} items available. Create one using the + Button.
-                  </div>
-                ) : (
-                  availableItems.map((item) => (
-                    <Button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        onChange(field.name, item.data);
-                        setIsOpen(false);
-                      }}
-            
-                    >
-                      <div>{item.label}</div>
-                      <div>
-                        {JSON.stringify(item.data).substring(0, 60)}...
-                      </div>
-                    </Button>
-                  ))
-                )}
-              </div>
-            </Accordion.Panel>
-          </Accordion.Item>
-        </Accordion>
-        <div className="ButtonGroup">
-          <ActionIcon
-            variant="subtle"
-            type="button"
-            onClick={() => onCreateNew(field)}
-            title={`Create new ${objectType}`}
-          >
-            <Plus width={'70%'} />
-          </ActionIcon>
-        </div>
-      </div>
+                <Plus width={'70%'} />
+
+            </ActionIcon>
+      </Group>
 
       {selectedItem && (
         <div>
-          <div>
-            <span>Selected: {selectedItem.label}</span>
-          </div>
-          <pre>
-            {JSON.stringify(selectedItem.data)}
-          </pre>
+          <Code>
+            {JSON.stringify(selectedItem.data, null, 2)}
+          </Code>
         </div>
       )}
-    </div>
     </div>
   );
 };
