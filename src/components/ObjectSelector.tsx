@@ -9,7 +9,6 @@ const ObjectSelector: React.FC<ObjectSelectorProps> = ({
   onChange, 
   dataSource, 
   onCreateNew,
-  availableRefs
   }) => {
   const [] = useState(false);
   const objectType = field.schema?.title || field.name.split('.').pop() || 'object';
