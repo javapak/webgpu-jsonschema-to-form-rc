@@ -8,4 +8,7 @@ export default interface ObjectSelectorProps {
   dataSource: ObjectDataSource;
   onCreateNew: (field: ProcessedField) => void;
   error?: string | null;
+  /** Optional list of available internal ref names (e.g. definition keys) for hints when no instances exist */
+  availableRefs?: string[];
+  
 }

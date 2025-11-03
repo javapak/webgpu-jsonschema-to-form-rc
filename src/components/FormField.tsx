@@ -24,7 +24,7 @@ const FormField: React.FC<FormFieldProps> = ({
         error={error}
         dataSource={dataSource}
         onCreateNew={onCreateNew}
-        availableRefs={availableRefs}
+        availableRefs={availableRefs!}
       />
 
 

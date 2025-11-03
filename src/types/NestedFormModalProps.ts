@@ -1,4 +1,3 @@
-import { Stack } from "@mantine/core";
 import type NestedFormState from "./NestedFormState";
 import type { ObjectDataSource } from "./ObjectDataSource";
 
@@ -12,6 +11,8 @@ export default interface NestedFormModalProps {
    * When provided, child modals should call this to close the entire modal stack.
    */
   closeAll?: () => void;
+  /** Available internal refs to show in nested forms (e.g. keys from root `#/definitions/*`) */
+  availableRefs?: string[];
   depth?: number;
   maxDepth: number;
 }

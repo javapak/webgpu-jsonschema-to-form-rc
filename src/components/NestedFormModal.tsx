@@ -6,7 +6,7 @@ import type ProcessedField from "../types/ProcessedField";
 import WebGPUSchemaProcessor from "../webgpu/WebGPUSchemaProcessor";
 import FormField from "./FormField";
 import type NestedFormState from "../types/NestedFormState";
-import { Button, ActionIcon, Center, Container, Modal } from "@mantine/core";
+import { Button, ActionIcon, Center, Container, Modal, LoadingOverlay } from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
 import {ArrowLeft} from '@ricons/tabler';
 import '@mantine/core/styles/ModalBase.css';
@@ -24,6 +24,8 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
   maxDepth,
   depth = 0,
   closeAll
+  ,
+  availableRefs
 }) => {
   const [processor] = useState(() => new WebGPUSchemaProcessor());
   const [formFields, setFormFields] = useState<ProcessedField[]>([]);
@@ -35,12 +37,17 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
 
 
   useEffect(() => {
-    if (nestedForm.schema) {
-      processor.analyzeSchema(nestedForm.schema).then(analysis => {
+    if (nestedForm.schema && nestedForm.rootSchema) {
+      // Create a schema that has the nested object's structure but preserves root definitions
+      const schemaWithDefs = {
+        ...structuredClone(nestedForm.schema),
+        definitions: structuredClone(nestedForm.rootSchema.definitions)
+      };
+      processor.analyzeSchema(schemaWithDefs).then(analysis => {
         setFormFields(analysis.topLevelFields);
       });
     }
-  }, [nestedForm.schema, processor]);
+  }, [nestedForm.schema, nestedForm.rootSchema, processor]);
 
   const handleInputChange = (fieldName: string, value: string | number | boolean | object): void => {
     setFormValues(prev => ({ ...prev, [fieldName]: value } as FormValues));
@@ -55,6 +62,7 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
         isOpen: true,
         parentPath: nestedForm.parentPath ? `${nestedForm.parentPath} → ${field.name}`: field.name,
         schema: field.schema,
+        rootSchema: nestedForm.rootSchema,
         values: {},
         title: field.schema.title || field.name.split('.').pop() || 'Object'
       });
@@ -83,20 +91,23 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
     const id = `nested_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const label = `${Object.values(data)[0]} (Nested L${depth + 1})` || `Nested ${objectType} L${depth + 1}`;
 
-    let newDataSource = {
+    // Create a reference to the new object that will be added to the data source
+    const newObjectRef = { id, label, data };
+
+    // Update both local state and parent's data source
+    const newDataSource = {
       ...dataSource,
       [objectType]: [
         ...(dataSource[objectType] || []),
-        { id, label, data }
+        newObjectRef
       ],
     };
 
-
-    // Update the parent's data source
+    // Update the data source at this level and propagate upward
     onUpdateDataSource(newDataSource);
 
-    // Set the value in the current form
-    handleInputChange(childNestedForm.parentPath, data);
+    // Set the value in the current form to the reference object
+    handleInputChange(childNestedForm.parentPath, newObjectRef);
 
     // Close child nested form
     setChildNestedForm(null);
@@ -163,9 +174,10 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
 
           <div className="FormField">
             {formFields.length === 0 ? (
-              <div>
+              <Center>
                 <p>Loading form fields...</p>
-              </div>
+                <LoadingOverlay/>
+              </Center>
             ) : (
               formFields.map((field, index) => (
                 <div>
@@ -178,7 +190,7 @@ const NestedFormModal: React.FC<NestedFormModalProps> = ({
                   depth={0} // Reset depth for display within modal
                   dataSource={dataSource}
                   onCreateNew={handleCreateNestedObject}
-                  availableRefs={[]}
+                  availableRefs={availableRefs}
                 />
                 </div>
               ))

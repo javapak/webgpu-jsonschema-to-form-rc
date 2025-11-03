@@ -1,6 +1,7 @@
 
 /// <reference types="@webgpu/types" />
 
+import type FlattenedField from "../types/FlattenedField";
 import type JsonSchema from "../types/JsonSchema";
 import type ProcessedField from "../types/ProcessedField";
 
@@ -27,15 +28,25 @@ export default class WebGPUSchemaProcessor {
   async analyzeSchema(schema: JsonSchema): Promise<{
     topLevelFields: ProcessedField[];
     nestedObjects: Record<string, JsonSchema>;
-    circularRefs: Record<string, string>;
+    internalRefs: Record<string, string>;
   }> {
+    console.log('Input schema has definitions?', schema.definitions ? 'yes' : 'no');
+    if (schema.definitions) {
+      console.log('Input definition keys:', Object.keys(schema.definitions));
+    }
+    
     const topLevelFields: ProcessedField[] = [];
     const nestedObjects: Record<string, JsonSchema> = {};
-    const circularRefs: Record<string, string> = {};
+    const internalRefs: Record<string, string> = {};
     const visited = new Set<string>();
+    // track the lowest depth where a schema id was first observed so we prefer shallow mappings
+    const lowestDepths: Record<string, number> = {};
 
-    this.analyzeSchemaRecursive(schema, '', topLevelFields, nestedObjects, circularRefs, visited, 0);
-
+  // Clone schema to prevent mutations/loss of definitions
+  // Deep clone schema to preserve definitions and nested structure
+  const rootSchema = structuredClone(schema);
+  this.analyzeSchemaRecursive(rootSchema, rootSchema, '', topLevelFields, nestedObjects, internalRefs, visited, lowestDepths, 0);
+  
     // If WebGPU is available, use GPU compute shaders for optimization
     if (this.initialized && this.device && topLevelFields.length > 0) {
       try {
@@ -44,70 +55,219 @@ export default class WebGPUSchemaProcessor {
         console.warn('GPU optimization failed, using CPU fallback:', error);
       }
     }
+    console.log(internalRefs, topLevelFields);
+    return { topLevelFields, nestedObjects, internalRefs };
+  }
 
-    return { topLevelFields, nestedObjects, circularRefs };
+  /**
+   * Calculate priority for a field to group related fields together
+   */
+  private getFieldPriority(depth: number, fieldType: 'object' | 'reference' | 'definition' | 'primitive', isRequired: boolean): number {
+    // Base priority - higher depths = lower priority to group by level
+    const basePriority = 1000 - (depth * 100);
+    
+    // Type-specific offset to group related fields
+    const typeOffset = {
+      object: 80,     // Objects first in their group
+      reference: 60,  // References next
+      definition: 40, // Definition references
+      primitive: 20   // Primitive fields last
+    }[fieldType];
+    
+    // Required fields get slight boost within their type
+    const requiredBoost = isRequired ? 10 : 0;
+    
+    return basePriority + typeOffset + requiredBoost;
   }
 
   private analyzeSchemaRecursive(
     schema: JsonSchema,
+    rootSchema: JsonSchema,
     path: string,
     topLevelFields: ProcessedField[],
     nestedObjects: Record<string, JsonSchema>,
-    circularRefs: Record<string, string>,
+    internalRefs: Record<string, string>,
     visited: Set<string>,
-    depth: number
+    lowestDepths: Record<string, number>,
+    depth: number,
+    executionStep = 1
   ): void {
+    
     const schemaId = JSON.stringify(schema);
+    console.log('Execution step: ', executionStep);
+    console.log('Schema:', schema);
+    console.log('Root schema has definitions?', rootSchema.definitions ? `yes, ${JSON.stringify(rootSchema.definitions, null, 2)})` : 'no');
+
+    if (rootSchema.definitions) {
+      console.log('Definition keys:', Object.keys(rootSchema.definitions));
+    }
 
     if (visited.has(schemaId)) {
-      circularRefs[path] = schemaId;
+      internalRefs[path] = schemaId;
       topLevelFields.push({
-        name: path + '_circular',
-        type: 'circular_reference',
+        name: schemaId,
+        type: 'object',
         required: false,
         depth,
-        parentIndex: -1,
         circularRefPath: path,
-        priority: 1
+        schema: { title: path.split('.').pop() || 'root' },
+        priority: this.getFieldPriority(depth, 'reference', false)
       });
       return;
     }
 
-    if (schema.type === 'object' && schema.properties) {
+    if (schema.type === 'object' || schema.properties) {
+      // Add to nestedObjects and topLevelFields if this is a nested object (depth > 0)
       if (depth > 0) {
-        nestedObjects[path] = schema;
+        // For nested objects, just record them and stop - don't process their properties here
+        // They will be processed when the nested form is opened
+        const prevDepth = lowestDepths[schemaId];
+        if (prevDepth === undefined || depth < prevDepth) {
+          nestedObjects[path] = schema;
+          lowestDepths[schemaId] = depth;
+        }
         topLevelFields.push({
           name: path,
           type: 'object',
           required: false,
           depth,
-          parentIndex: -1,
           schema,
-          priority: 100 - depth * 10
+          priority: this.getFieldPriority(depth, 'object', false)
         });
-        return;
+        return; // Stop here - don't process nested object properties
       }
 
       visited.add(schemaId);
 
-      Object.entries(schema.properties).forEach(([key, propSchema]: [string, JsonSchema]) => {
+      // Use for...of to maintain proper scope for rootSchema
+      for (const [key, propSchema] of Object.entries(schema.properties!)) {
         const fieldPath = path ? `${path}.${key}` : key;
         const isRequired = schema.required?.includes(key) || false;
+        // Handle $ref cases per tooling rules:
+        // '#' -> root circular reference
+        // '#/definitions/X' -> resolve X from root schema definitions
 
-        if (propSchema.type === 'object' || propSchema.properties) {
-          this.analyzeSchemaRecursive(propSchema, fieldPath, topLevelFields, nestedObjects, circularRefs, visited, depth + 1);
-        } else {
+        console.log('fieldPath: ', fieldPath, ' isRequired: ', isRequired)
+        if (propSchema.$ref) {
+          // Handle root circular reference
+          if (propSchema.$ref === '#') {
+            // Treat this property as referencing the root schema (object)
+            internalRefs[fieldPath] = propSchema.$ref;
+            const rootId = JSON.stringify(rootSchema);
+            if (lowestDepths[rootId] === undefined || depth < lowestDepths[rootId]) {
+              nestedObjects[fieldPath] = rootSchema;
+              lowestDepths[rootId] = depth;
+            }
+            topLevelFields.push({
+              name: key,
+              type: 'object',
+              required: isRequired,
+              depth,
+              schema: rootSchema,
+              priority: this.getFieldPriority(depth, 'object', isRequired)
+            });
+            continue;
+          }
+
+          // Handle definition references
+          const defsPrefix = '#/definitions/';
+          if (propSchema.$ref.startsWith(defsPrefix)) {
+            const key = propSchema.$ref.substring(defsPrefix.length);
+            console.log('Looking up definition:', key, 'at depth:', depth);
+            console.log('Root schema state:', JSON.stringify(rootSchema, null, 2));
+            const definitions = rootSchema.definitions as Record<string, JsonSchema> | undefined;
+            console.log('Definitions record:', definitions);
+            const def = definitions?.[key];
+            console.log('Found definition:', def);
+
+            
+            if (def) {
+              console.log('EXIST PLEASE')
+              // If def is an object, treat the property as that object schema (do not expand here)
+              if (def.properties) {
+                // Add as nested object for nested form editing
+                const defId = JSON.stringify(def);
+                if (lowestDepths[defId] === undefined || depth < lowestDepths[defId]) {
+                  nestedObjects[fieldPath] = def;
+                  lowestDepths[defId] = depth;
+                }
+                topLevelFields.push({
+                  name: key,
+                  type: 'object',
+                  required: isRequired,
+                  depth,
+                  schema: def,
+                  priority: this.getFieldPriority(depth, 'definition', isRequired)
+                });
+                continue;
+              } else {
+                // Primitive or non-object definition
+                topLevelFields.push({
+                  name: key,
+                  type: (def.type ?? 'string') as FlattenedField['type'],
+                  required: isRequired,
+                  depth,
+                  schema: def,
+                  priority: this.getFieldPriority(depth, 'primitive', isRequired)
+                });
+                continue; // Skip to next property
+              }
+            } else {
+              // Definition not found - create placeholder with definition key as title
+              internalRefs[fieldPath] = propSchema.$ref;
+              topLevelFields.push({
+                name: key,
+                type: 'object',
+                required: isRequired,
+                depth,
+                circularRefPath: propSchema.$ref,
+                schema: { title: key },
+                priority: 1
+              });
+            }
+            continue;
+          }
+
+          // Handle non-definition $refs (external references)
+          internalRefs[fieldPath] = propSchema.$ref;
           topLevelFields.push({
-            name: fieldPath,
-            type: propSchema.type || 'string',
+            name: key,
+            type: 'object',
             required: isRequired,
             depth,
-            parentIndex: -1,
+            circularRefPath: propSchema.$ref,
             schema: propSchema,
-            priority: isRequired ? 150 : 100
+            priority: 1
           });
+          continue;
         }
-      });
+
+        // Handle non-ref objects and primitives
+          // At depth > 0, all properties should be handled as nested objects to keep them contained
+          if (depth > 0) {
+            nestedObjects[fieldPath] = propSchema;
+            topLevelFields.push({
+              name: fieldPath,
+              type: 'object',
+              required: isRequired,
+              depth,
+              schema: propSchema,
+              priority: this.getFieldPriority(depth, 'object', isRequired)
+            });
+          } else if (propSchema.type === 'object' || propSchema.properties) {
+            this.analyzeSchemaRecursive(propSchema, rootSchema, fieldPath, topLevelFields, nestedObjects, internalRefs, visited, lowestDepths, depth + 1, executionStep + 1);
+          } else {
+            // Only add primitive fields directly at depth 0
+            topLevelFields.push({
+              name: fieldPath,
+              type: propSchema.type || 'string',
+              required: isRequired,
+              depth,
+              schema: propSchema,
+              priority: this.getFieldPriority(depth, 'primitive', isRequired)
+            });
+        }
+      }
 
       visited.delete(schemaId);
     }

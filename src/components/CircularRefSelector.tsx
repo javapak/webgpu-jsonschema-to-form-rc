@@ -1,12 +1,11 @@
-import { NativeSelect, Select } from "@mantine/core";
+import { NativeSelect } from "@mantine/core";
 import type CircularRefSelectorProps from "../types/CircularRefSelecterProps";
 
 const CircularRefSelector: React.FC<CircularRefSelectorProps> = ({
   field,
   value,
   onChange,
-  availableRefs,
-  error
+  availableRefs
 }) => {
   return (
     <>
@@ -21,7 +20,7 @@ const CircularRefSelector: React.FC<CircularRefSelectorProps> = ({
       />}
 
       <p className="Warning">
-        Circular reference detected. Select an existing object to reference.
+        Internal reference detected ("#" link). Select an existing object to reference.
       </p>
     </>
   );

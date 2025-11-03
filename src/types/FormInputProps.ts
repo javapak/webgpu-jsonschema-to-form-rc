@@ -6,7 +6,9 @@ export default interface FormInputProps {
   value: string | number | boolean | object | undefined;
   onChange: (fieldName: string, value: string | number | boolean | object) => void;
   error?: string | null;
+  nestedCall?: boolean
   dataSource: ObjectDataSource;
   onCreateNew: (field: ProcessedField) => void;
   availableRefs: string[];
+
 }

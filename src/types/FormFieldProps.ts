@@ -1,4 +1,5 @@
 import type FormErrors from "./FormErrors";
+import type JsonSchema from "./JsonSchema";
 import type { ObjectDataSource } from "./ObjectDataSource";
 import type ProcessedField from "./ProcessedField";
 
@@ -10,5 +11,5 @@ export default interface FormFieldProps {
   depth?: number;
   dataSource: ObjectDataSource;
   onCreateNew: (field: ProcessedField) => void;
-  availableRefs: string[];
+  availableRefs?: string[]
 }

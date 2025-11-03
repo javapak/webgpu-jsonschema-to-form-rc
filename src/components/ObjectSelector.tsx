@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type ObjectSelectorProps from "../types/ObjectSelectorProps";
-import { Divider, ActionIcon, Button, Code, NativeSelect, Group, TextInput } from "@mantine/core";
+import { Divider, ActionIcon, Code, NativeSelect, Group, TextInput } from "@mantine/core";
 import { Plus } from "@ricons/tabler";
 
 const ObjectSelector: React.FC<ObjectSelectorProps> = ({ 
@@ -8,10 +8,10 @@ const ObjectSelector: React.FC<ObjectSelectorProps> = ({
   value, 
   onChange, 
   dataSource, 
-  onCreateNew, 
-  error 
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
+  onCreateNew,
+  availableRefs
+  }) => {
+  const [] = useState(false);
   const objectType = field.schema?.title || field.name.split('.').pop() || 'object';
   const [availableItems, setAvailableItems] = useState<Array<{
     id: string;
@@ -43,21 +43,33 @@ const ObjectSelector: React.FC<ObjectSelectorProps> = ({
         {availableItems?.length && availableItems.length > 0 ? (
 
         <>
-        <NativeSelect 
+        <NativeSelect
           title={`Use existing ${objectType} reference`}
-          classNames={{root: 'SelectRoot', wrapper: 'SelectWrapper' }}
-          content=""
-          label={field.name}
-          data={availableItems?.map((item) => ` ${field.name} - ${item.id}`)}
+          classNames={{ root: 'SelectRoot', wrapper: 'SelectWrapper' }}
+          label={field.name ? field.name : field.schema?.title}
+          data={availableItems?.map((item) => ({ value: item.id, label: item.label }))}
           w='250px'
-          onChange={(e) => onChange(field.name, e.currentTarget.value)}
+          onChange={(e) => {
+            const id = e.currentTarget.value;
+            const selected = availableItems?.find(it => it.id === id);
+            if (selected) onChange(field.name, selected.data);
+            else onChange(field.name, undefined as any);
+          }}
         />
         <Divider size="xs" orientation="vertical"/>
         </>
         
         ): <>
-        <TextInput w='250px' error disabled placeholder={`No ${objectType} instances to reference. `}/>
+        <div style={{display: 'flex', alignItems: 'center'}}>
+          <TextInput 
+          w='250px'
+          error 
+          disabled 
+          placeholder={`No ${objectType} instances to reference.`}
+          label={field.name ? field.name : field.schema?.title}
+          />
           <Divider size="xs" orientation="vertical" />
+        </div>
         </>
         }
           

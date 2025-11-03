@@ -21,12 +21,11 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [webGPUSupported, setWebGPUSupported] = useState<boolean>(false);
-  const [currentPath, setCurrentPath] = useState<string>('root');
-  
+  const [currentPath] = useState<string>('root');
   // Object data source for dropdowns
   const [dataSource, setDataSource] = useState<ObjectDataSource>({});
-
   const [nestedForm, setNestedForm] = useState<NestedFormState | null>(null);
+  // Available internal refs (e.g. keys from root `#/definitions/*` or special tokens)
   const [availableRefs, setAvailableRefs] = useState<string[]>(['root', 'parent', 'self']);
 
   useEffect(() => {
@@ -38,7 +37,7 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
     
     setLoading(true);
     setErrors({});
-    
+
     try {
       const parsedSchema: JsonSchema = JSON.parse(schema);
       
@@ -51,13 +50,12 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
         }
       }
       
-      const analysis = await processor.analyzeSchema(parsedSchema);
-      
-      setFormFields(analysis.topLevelFields);
-      
-      // Update available refs based on circular references found
-      const refs = Object.keys(analysis.circularRefs);
-      setAvailableRefs([...refs, 'root', 'parent', 'self']);
+    const analysis = await processor.analyzeSchema(parsedSchema);
+    // Build available refs list from discovered internal refs and a few special tokens
+    const refs = analysis.internalRefs ? Object.keys(analysis.internalRefs) : [];
+    setAvailableRefs([...refs, 'root', 'parent', 'self']);
+
+    setFormFields(analysis.topLevelFields);
       
     } catch (error: unknown) {
       const errorMessage: string = error instanceof Error ? error.message : 'Unknown error';
@@ -76,20 +74,22 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
 
   const handleCreateNew = (field: ProcessedField): void => {
     if (field.schema) {
+      const parsedRootSchema = JSON.parse(schema);
       setNestedForm({
         isOpen: true,
         parentPath: `${currentPath} → ${field.name}`,
         schema: field.schema,
+        rootSchema: parsedRootSchema,  // Include root schema for definition lookups
         values: {},
         title: field.schema.title || field.name.split('.').pop() || 'Object'
       });
     }
   };
 
-  const handleUpdateDataSource = useCallback((dataSource: ObjectDataSource) => {
-    console.log('new data source', dataSource);
-
-  }, [dataSource]);
+  const handleUpdateDataSource = useCallback((newDataSource: ObjectDataSource) => {
+    console.log('new data source', newDataSource);
+    setDataSource(newDataSource);
+  }, []);
 
   
 
@@ -141,6 +141,9 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
     }
   };
 
+  const firstToUpper = (str: string): string => str.charAt(0).toUpperCase() + str.slice(1);
+
+
   return (
     <div id='main'>
                     {/* Nested Form Modal */}
@@ -149,6 +152,7 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
                   nestedForm={nestedForm}
                   onClose={() => setNestedForm(null)}
                   closeAll={() => setNestedForm(null)}
+                  availableRefs={availableRefs}
                   onSave={handleNestedFormSave}
                   dataSource={dataSource}
                   onUpdateDataSource={handleUpdateDataSource}
@@ -187,7 +191,7 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
               <Button
                 onClick={() => loadSample('circular')}
               >
-                Circular Reference
+                Internal Reference
               </Button>
             </div>
           </div>
@@ -221,7 +225,7 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
           {formFields.length > 0 ? (
             <>
               <div className='FormField' style={{maxWidth: '40%'}}>
-                <h3>{JSON.parse(schema).name} properties:</h3>
+                <h3>{firstToUpper((JSON.parse(schema).title ? JSON.parse(schema).title : ''))} properties:</h3>
 
                 {formFields.map((field: ProcessedField, index: number) => (
                   <FormField
@@ -282,6 +286,7 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
 
 const sampleSchemas: Record<string, JsonSchema> = {
   basic: {
+    title: 'account',
     type: 'object',
     properties: {
       name: { type: 'string', description: 'Full name' },
@@ -294,6 +299,7 @@ const sampleSchemas: Record<string, JsonSchema> = {
     required: ['name', 'email']
   },
   nested: {
+    title: 'User Persistant Settings',
     type: 'object',
     properties: {
       user: {
@@ -317,16 +323,24 @@ const sampleSchemas: Record<string, JsonSchema> = {
     }
   },
   circular: {
+    title: 'parent',
+    description: 'i am the parent type but i am also the child type :O',
+    definitions: {test: {description: 'wow, look at my description inside of my definition.', type: 'string', enum: ['yeah', 'please (._.)', 'work',]}},
     type: 'object',
     properties: {
       name: { type: 'string' },
-      parent: {
+      nestedObject: {
         type: 'object',
         properties: {
-          name: { type: 'string' },
-          child: { $ref: '#' }  // Creates circular reference
-        }
-      }
+          testProp: { type: 'string' },
+          a_fucking_miracle: { $ref: '#/definitions/test' }
+        },
+
+
+      },
+      circularRefTest: { $ref: '#' },  // Creates an internal $ref link to the root ("#")
+
+
     }
   }
 };
