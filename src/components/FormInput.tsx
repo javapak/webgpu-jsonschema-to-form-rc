@@ -36,6 +36,7 @@ const FormInput: React.FC<FormInputProps> = ({
           </>
         );
       }
+      
 
   // If schema indicates a primitive type, render the appropriate primitive input
       if (field.schema && field.schema.type && field.schema.type !== 'object') {
@@ -103,9 +104,10 @@ const FormInput: React.FC<FormInputProps> = ({
               />
             );
           default:
-            break;
+            ;
         }
       }
+      break;
       // Fallback for internal_ref: render ObjectSelector to pick/create an instance
       
     case 'string': 
