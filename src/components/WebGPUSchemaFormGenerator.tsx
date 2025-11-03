@@ -27,6 +27,7 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
   const [nestedForm, setNestedForm] = useState<NestedFormState | null>(null);
   // Available internal refs (e.g. keys from root `#/definitions/*` or special tokens)
   const [availableRefs, setAvailableRefs] = useState<string[]>(['root', 'parent', 'self']);
+  const [rootSchemaName, setRootSchemaName] = useState<string>();
 
   useEffect(() => {
     setWebGPUSupported(!!navigator.gpu);
@@ -34,13 +35,13 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
 
   const generateForm = async (): Promise<void> => {
     if (!schema.trim()) return;
-    
     setLoading(true);
     setErrors({});
 
+
     try {
       const parsedSchema: JsonSchema = JSON.parse(schema);
-      
+      setRootSchemaName(firstToUpper(parsedSchema.title ? parsedSchema.title : ''));
       // Initialize WebGPU if supported
       if (webGPUSupported && !processor['initialized']) {
         try {
@@ -225,7 +226,7 @@ const WebGPUSchemaFormGenerator: React.FC<{maxDepth: number}> = ({maxDepth}: {ma
           {formFields.length > 0 ? (
             <>
               <div className='FormField' style={{maxWidth: '40%'}}>
-                <h3>{firstToUpper((JSON.parse(schema).title ? JSON.parse(schema).title : ''))} properties:</h3>
+                <h3>{rootSchemaName + ' '} properties:</h3>
 
                 {formFields.map((field: ProcessedField, index: number) => (
                   <FormField
