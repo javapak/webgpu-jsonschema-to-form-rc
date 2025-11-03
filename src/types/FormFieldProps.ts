@@ -1,5 +1,4 @@
 import type FormErrors from "./FormErrors";
-import type JsonSchema from "./JsonSchema";
 import type { ObjectDataSource } from "./ObjectDataSource";
 import type ProcessedField from "./ProcessedField";
 
