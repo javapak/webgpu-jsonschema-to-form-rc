@@ -1,8 +1,7 @@
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import App from './App.tsx'
-import { Box, Card, Center, Container, createTheme, MantineProvider, Paper, rem, Select } from '@mantine/core'
+import { Card, Center, Container, createTheme, MantineProvider, Paper, rem, Select } from '@mantine/core'
 import type { MantineThemeOverride } from "@mantine/core";
 import './index.css'
 import '@mantine/core/styles.css';
