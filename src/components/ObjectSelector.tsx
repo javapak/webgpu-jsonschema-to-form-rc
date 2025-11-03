@@ -55,11 +55,11 @@ const ObjectSelector: React.FC<ObjectSelectorProps> = ({
             else onChange(field.name, undefined as any);
           }}
         />
-        <Divider size="xs" orientation="vertical"/>
+        <div style={{padding: '25px'}}><Divider size="xs" orientation="vertical"/></div>
         </>
         
         ): <>
-        <div style={{display: 'flex', alignItems: 'center'}}>
+        <div style={{display: 'flex', alignItems: 'center', paddingBottom: '25px'}}>
           <TextInput 
           w='250px'
           error 
@@ -67,7 +67,7 @@ const ObjectSelector: React.FC<ObjectSelectorProps> = ({
           placeholder={`No ${objectType} instances to reference.`}
           label={field.name ? field.name : field.schema?.title}
           />
-          <Divider size="xs" orientation="vertical" />
+          <Divider ml='25px' mt='25px' size="xs" orientation="vertical" />
         </div>
         </>
         }
